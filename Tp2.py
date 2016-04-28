@@ -50,6 +50,21 @@ def calcular_inflacion(diccionario,producto,fechas): # En revision / Este sería
         inflacion.append((clave,100*((preciof-precioi)/precioi)))
     return inflacion
 
+def mostrar_menu():
+    print("1. Inflación por supermercado")
+    print("2. Inflación por producto")
+    print("3. Inflación general promedio")
+    print("4. Mejor precio para un producto")
+    print("5. Salir")
+
+def main():
+    cargar_datos_en_diccionario("archivo.csv","archivo2.csv","archivo3.csv")
+    while true:
+        mostrar_menu
+        opcion=input("Opcion: ")
+        if opcion==5:
+            break
+
 fechas=("201601","201602")
 print(cargar_datos_en_diccionario("archivo.csv","archivo2.csv","archivo3.csv"))
 print(calcular_inflacion(cargar_datos_en_diccionario("archivo.csv","archivo2.csv","archivo3.csv"),"Galletitas Okebon",fechas))
