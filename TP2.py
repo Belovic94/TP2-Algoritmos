@@ -3,6 +3,10 @@ import csv
 CANT_OPCIONES = 5
 AÑO = 2016
 
+# ----------------------------------------------------------------------------------------------------------
+# |                                 Cargo los datos del archivo en memoria                                 |
+# ---------------------------------------------------------------------------------------------------------
+
 
 def cargar_datos_supermercado_en_diccionario(arch):
     """Ingresa como parametro la ruta de un archivo csv con 2 campos.
@@ -54,53 +58,110 @@ def cargar_datos_en_diccionario(arch1, arch2, arch3):
             registro_secundario = next(datos_productos_csv, None)
     return dicc_productos
 
+# ----------------------------------------------------------------------------------------------------------
+# |                                 Inflacion por Supermercado y Prodcuto                                  |
+# ----------------------------------------------------------------------------------------------------------
 
-def calcular_inflacion(diccionario, producto, fechas):  # En revision / Este sería el punto 2
+
+def inflacion_por_supermercado(diccionario,fechas):
+    """Recibe com parametro un diccionario y una tupla de fechas. Devuelve la inflacion total de los supermercados en un diccionario"""
+    inflacion_total = {}
+    cantidad_de_productos = 1
+    for producto in diccionario.keys():
+        inflacion = calcular_inflacion(diccionario, producto, fechas)
+        for supermercado,inflacion_producto in inflacion:
+            if supermercado not in inflacion_total.keys():
+                inflacion_total[supermercado] = [inflacion_producto,cantidad_de_productos]
+                continue
+            valor_anterior = inflacion_total.pop(supermercado)
+            inflacion_total[supermercado] = inflacion_total.get(supermercado,[]) + [valor_anterior[0] + inflacion_producto, valor_anterior[1] + 1]
+    for supermercado,lista in inflacion_total.items():
+        inflacion_total[supermercado] = lista[0] / lista[1]
+    return inflacion_total.items()
+
+def calcular_inflacion(diccionario, producto, fechas):  
     """Recibe como parametro un diccionario, una cadena y una tupla de fechas.
     Devuelve una lista de tuplas, donde cada tupla contiene el nombre del supermercado y su inflacion"""
     inflacion = []
-    supermercado = diccionario.get(producto, {})
-    print(supermercado)
+    supermercado = diccionario.get(producto,{})
     # asigna en la variable supermercado, un dicionario cuya clave
     # es el nombre del supermercado y el valor es otro diccionario de fechas
     for clave in supermercado:
         try:
             dicc_fechas = supermercado.get(clave, {})
-            precioi = dicc_fechas.get(fechas[0], 0)
+            precioi = dicc_fechas.get(fechas[0], None)
             preciof = dicc_fechas.get(fechas[1], None)
             inflacion.append((clave, 100 * ((preciof - precioi) / precioi)))
-        except (ZeroDivisionError, TypeError):
+        except TypeError:
             continue
+    if inflacion:
+        return inflacion
+    return None
 
-    return inflacion
-
-def mostrar_inflacion_producto(secuencia):
+def mostrar_inflacion(lista):
     "Recibe como parametro una secuencia. Imprime por pantalla los diferentes supermercados y su inflacion"
-    #try:
-    for supermercado,inflacion in secuencia:
-        print("La inflacion del supermercado {} es {:.2f}% ".format(supermercado,inflacion))
-    #except:
-        #raise TypeError("No hay inflacion")# temporal, cambiar mensaje
+    try:
+        for supermercado,inflacion in lista:
+            print("La inflacion del supermercado {} es {:.2f}% ".format(supermercado,inflacion))
+    except:
+        raise TypeError("El producto no se vende en ninguno de los supermercados para ese rango de fechas")
 
-def inflacion_por_supermercado(diccionario,fechas):
-    """Recibe com parametro un diccionario y una tupla de fechas. Devuelve la inflacion total de los supermercados en un diccionario"""
-    inflacion_total = {}
+
+#------------------------------------------------------------------------------------------------------
+# |                                 Inflacion general promedio                                            |
+# ----------------------------------------------------------------------------------------------------
+
+
+def inflacion_general_promedio(diccionario, fechas):
+    """Recibe como parametro un diccionario y un rango de fechas. Devuelve la inflacion general promedio de todos los productos """
+    inflacion_promedio = 0
     for producto in diccionario.keys():
         print(producto)
         inflacion = calcular_inflacion(diccionario, producto, fechas)
-        for supermercado,inflacion_producto in inflacion:
-            if supermercado not in inflacion_total.keys():
-                inflacion_total[supermercado] = [inflacion_producto,1]
-                continue
-            print(inflacion_total)
-            valor_anterior = inflacion_total.pop(supermercado)
-            print(valor_anterior)
-            inflacion_total[supermercado] = inflacion_total.get(supermercado,[]) + [valor_anterior[0] + inflacion_producto, valor_anterior[1] + 1]
-    for supermercado,lista in inflacion_total.items():
-        print(lista)
-        inflacion_total[supermercado] = lista[0] / lista[1]
-    print(inflacion_total)
-    return inflacion_total.items()
+        inflacion_total_producto = 0
+        for supermecado,inflacion_parcial_producto in inflacion:
+            inflacion_total_producto += inflacion_parcial_producto
+        inflacion_promedio  += inflacion_total_producto / len(inflacion)
+    return (inflacion_promedio / len(diccionario.keys())), fechas
+
+def mostrar_inflacion_promedio(inflacion_promedio, fechas):
+    """Recibe un número flotante con la inflacion promedio y lo imprime por pantalla"""
+    print("La inflacion general promedio entre las fechas {} y {} es : {:.2f}".format(fechas[0], fechas[1], inflacion_promedio))
+
+
+#------------------------------------------------------------------------------------------------------
+# |                                 Mejor Precio Producto                                             |
+# ----------------------------------------------------------------------------------------------------
+
+
+def mejor_precio_supermercado(diccionario, producto, fecha):
+    """Recibe como parametro un diccionario, el nombre de un producto y una fecha. Devuelve el precio más bajo  y el nombre del supermecado que vende el producto a ese precio"""
+    precio_supermercado = []
+    supermecado = diccionario.get(producto,{})
+    mejor_precio = None 
+    for clave in supermecado:
+        try:
+            dicc_fechas = supermecado[clave]
+            precio = dicc_fechas.get(fecha, None)
+            if  not mejor_precio: # el primer precio siempre va a ser el mejor precio
+                mejor_precio = precio
+                supermercado_mejor_precio = clave
+            elif precio < mejor_precio:
+                mejor_precio = precio
+                supermercado_mejor_precio = clave
+        except TypeError:
+            continue
+    return supermercado_mejor_precio, mejor_precio
+
+
+def mostrar_mejor_precio(supermercado,precio):
+    print("El precio más bajo del producto es ${:.2f} y se encuentra en el supermercado {}".format(precio,supermercado))
+
+
+# -----------------------------------------------------------------------------------
+# |                             Mostrar Menu y Main                                 |
+# ----------------------------------------------------------------------------------
+
 
 def mostrar_menu():
     print("")
@@ -113,21 +174,34 @@ def mostrar_menu():
 
 def main():
     datos = cargar_datos_en_diccionario("archivo.csv", "archivo2.csv", "archivo3.csv")
-    print(datos)# sacar despues de probar
     while True:
         mostrar_menu()
         opcion = pedir_opcion()
         if opcion == "5":
             break
+        
+        if opcion == "1":
+            inflacion = inflacion_por_supermercado(datos, (pedir_fecha(),pedir_fecha()))
+            mostrar_inflacion(inflacion)
+        
         if opcion == "2":
             try:
-                inflacion = calcular_inflacion(datos, pedir_producto(), pedir_rango_fechas())
-                mostrar_inflacion_producto(inflacion)
-            except TypeError as error:
+                inflacion = calcular_inflacion(datos, pedir_producto(), (pedir_fecha(),pedir_fecha()))
+                mostrar_inflacion(inflacion)
+            except (TypeError, KeyError) as error:
                 print("Error: ", error)
+        
         if opcion == "3":
-            inflacion = inflacion_por_supermercado(datos, pedir_rango_fechas())
-            mostrar_inflacion_producto(inflacion)
+            inflacion_promedio,fechas = inflacion_general_promedio(datos, (pedir_fecha(),pedir_fecha()))
+            mostrar_inflacion_promedio(inflacion_promedio,fechas)
+        
+        if opcion == "4":
+            try:
+                supermercado, precio = mejor_precio_supermercado(datos, pedir_producto(), pedir_fecha())
+                mostrar_mejor_precio(supermercado, precio)
+            except TypeError:
+                print("El producto no se vende en ninguno de los supermercados para esa fecha ")
+
 
 
 
@@ -139,16 +213,13 @@ def main():
 def pedir_opcion():
     return verif_ingreso_opcion(input("Opción: "))
 
+def pedir_fecha():
+    print ("Ingrese una fecha")
+    año = verif_ingreso_año(input("Año (en formato AAAA): ")) # puse que ingrese una sola fecha para hacerlo más general. Aparte la opcion 4 pide una sola fecha.
+    mes = verif_ingreso_mes(input("Mes (número): "))
+    return año + mes
 
-def pedir_rango_fechas():
-    print('Ingrese el periodo')
-    año_i = verif_ingreso_año(input('Año desde (en formato AAAA): '))
-    mes_i = verif_ingreso_mes(input('Mes desde (número): '))
-    año_f = verif_ingreso_año(input('Año hasta (en formato AAAA): '))
-    mes_f = verif_ingreso_mes(input('Mes hasta (número) :'))
-    return año_i + mes_i, año_f + mes_f
-
-def pedir_producto():
+def pedir_producto():# falta hacer que la eleccion del producto sea inteligente como especifica el tp
     return input('Producto a estudiar: ').lower()
 
 # ----------------------------------------------------------------------------
@@ -189,7 +260,3 @@ def es_año(cadena):
     return cadena.isdigit() and len(cadena) == 4 and 0 < int(cadena) <= AÑO
 
 main()
-
-#fechas = ("201601", "201602")
-#print(cargar_datos_en_diccionario("archivo.csv", "archivo2.csv", "archivo3.csv"))
-#print(calcular_inflacion(cargar_datos_en_diccionario("archivo.csv", "archivo2.csv", "archivo3.csv"), "Galletitas Okebon", fechas))
